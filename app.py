@@ -15,15 +15,15 @@ from sklearn.metrics import accuracy_score, classification_report
 st.set_page_config(page_title="Churn Prediction Dashboard", layout="centered")
 st.title("📉 Churn Prediction Dashboard")
 
-# Load dataset
-df = pd.read_csv("telecommunications_churn.csv")
+# Load dataset (must be in same folder)
+df = pd.read_csv("telecommunications_churn(1).csv")
 
 # Prepare features and target
 X = df.drop('churn', axis=1).select_dtypes(include=['number'])
 y = df['churn']
 y = y.loc[X.index]
 
-# Train-test split (same as notebook)
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
@@ -36,10 +36,9 @@ models = {
     "Random Forest": RandomForestClassifier()
 }
 
-# Store accuracy and reports
+# Evaluate models
 accuracy_results = {}
 reports = {}
-
 for name, model in models.items():
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -47,16 +46,14 @@ for name, model in models.items():
     accuracy_results[name] = acc
     reports[name] = classification_report(y_test, y_pred, output_dict=True)
 
-# Convert results to DataFrame
+# Sort and identify best model
 results_df = pd.DataFrame.from_dict(accuracy_results, orient='index', columns=['Accuracy'])
 results_df = results_df.sort_values(by='Accuracy', ascending=False)
-
-# Identify best model
 best_model_name = results_df.idxmax().values[0]
 best_accuracy = results_df.max().values[0]
 best_model = models[best_model_name]
 
-# Sidebar inputs for prediction
+# Sidebar inputs
 st.sidebar.header("🔧 Customer Feature Input")
 input_data = {}
 for col in X.columns:
@@ -64,10 +61,9 @@ for col in X.columns:
     max_val = int(X[col].max())
     default_val = int(X[col].mean())
     input_data[col] = st.sidebar.slider(col, min_val, max_val, default_val)
-
 input_df = pd.DataFrame([input_data])
 
-# Predict using selected model
+# Model selection
 selected_model_name = st.selectbox("🔽 Choose a Model", list(models.keys()))
 selected_model = models[selected_model_name]
 selected_model.fit(X_train, y_train)
@@ -75,14 +71,14 @@ prediction = selected_model.predict(input_df)[0]
 selected_accuracy = accuracy_results[selected_model_name]
 selected_report = reports[selected_model_name]
 
-# Display prediction
+# Prediction result
 st.subheader("📊 Prediction Result")
 if prediction == 1:
     st.error("⚠️ This customer is likely to CHURN.")
 else:
     st.success("✅ This customer is likely to STAY loyal.")
 
-# Accuracy comparison chart
+# Accuracy chart
 st.subheader("📈 Model Accuracy Comparison")
 fig, ax = plt.subplots(figsize=(8, 5))
 sns.barplot(x=results_df.index, y=results_df['Accuracy'], palette='viridis', ax=ax)
