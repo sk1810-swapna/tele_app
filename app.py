@@ -66,6 +66,12 @@ for name, model in models.items():
         "churn_rate": churn_rate
     }
 
+# Identify best model
+best_model_name = max(model_summaries, key=lambda x: model_summaries[x]["accuracy"])
+best_model = model_summaries[best_model_name]["model"]
+best_accuracy = model_summaries[best_model_name]["accuracy"]
+best_churn_rate = model_summaries[best_model_name]["churn_rate"]
+
 # Dropdown to select model
 st.subheader("🔽 Choose a Model")
 selected_model_name = st.selectbox("Select Model", list(models.keys()))
@@ -94,8 +100,8 @@ st.pyplot(fig)
 st.subheader("📌 Model Summary")
 
 summary_text = {
-    "SVM": "Support Vector Machine is ideal for binary classification and finds optimal boundaries between churn and loyalty. It's best when data is well-separated and high-dimensional.",
-    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. It's simple and effective for small datasets with clear patterns.",
+    "SVM": "Support Vector Machine is ideal for binary classification and finds optimal boundaries between churn and loyalty. Best for clean, well-separated data.",
+    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. Simple and effective for small datasets.",
     "Decision Tree": "Decision Trees split data based on feature thresholds. They're interpretable and good for rule-based churn detection.",
     "Random Forest": "Random Forest combines multiple decision trees for robust predictions. It handles feature interactions well and is highly accurate even with noisy data."
 }
@@ -106,7 +112,8 @@ st.markdown(f"**Predicted Churn Rate (Training Set):** `{selected_churn_rate:.2%
 st.markdown(f"**Use Case:** {summary_text[selected_model_name]}")
 
 # Highlight best model
-best_model_name = max(model_summaries, key=lambda x: model_summaries[x]["accuracy"])
-best_accuracy = model_summaries[best_model_name]["accuracy"]
-st.info(f"🏆 Based on training accuracy, the best model is **{best_model_name}** with `{best_accuracy:.2%}` accuracy.")
-
+st.subheader("🏆 Best Performing Model")
+st.markdown(f"**Best Model Based on Accuracy:** `{best_model_name}`")
+st.markdown(f"**Accuracy:** `{best_accuracy:.2%}`")
+st.markdown(f"**Churn Prediction Rate:** `{best_churn_rate:.2%}`")
+st.success(f"{best_model_name} is currently the most accurate model for predicting churn in this setup.")
