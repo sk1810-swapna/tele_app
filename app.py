@@ -74,13 +74,28 @@ best_model = trained_models[best_model_name]
 
 # Sidebar inputs
 st.sidebar.header("🔧 Customer Feature Input")
-input_data = {}
-for col in X.columns:
-    min_val = int(X[col].min())
-    max_val = int(X[col].max())
-    default_val = int(X[col].mean())
-    input_data[col] = st.sidebar.slider(col, min_val, max_val, default_val)
-input_df = pd.DataFrame([input_data])
+
+# total_day_minutes slider
+total_day_minutes = st.sidebar.slider("Total Day Minutes", int(X["total_day_minutes"].min()), int(X["total_day_minutes"].max()), int(X["total_day_minutes"].mean()))
+
+# customer_service_calls slider (max 9)
+customer_service_calls = st.sidebar.slider("Customer Service Calls", 0, 9, int(X["customer_service_calls"].mean()))
+
+# international_plan dropdown
+international_plan = st.sidebar.selectbox("International Plan", ["No", "Yes"])
+intl_plan_bin = 1 if international_plan == "Yes" else 0
+
+# voice_mail_plan dropdown
+voice_mail_plan = st.sidebar.selectbox("Voice Mail Plan", ["No", "Yes"])
+vm_plan_bin = 1 if voice_mail_plan == "Yes" else 0
+
+# Create input DataFrame
+input_df = pd.DataFrame([{
+    "total_day_minutes": total_day_minutes,
+    "customer_service_calls": customer_service_calls,
+    "international_plan": intl_plan_bin,
+    "voice_mail_plan": vm_plan_bin
+}])
 
 # Dropdown to select model
 st.subheader("🔽 Choose a Model")
