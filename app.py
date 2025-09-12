@@ -15,17 +15,27 @@ from sklearn.metrics import accuracy_score, classification_report
 st.set_page_config(page_title="Churn Prediction Dashboard", layout="centered")
 st.title("📉 Churn Prediction Dashboard")
 
-# Load dataset (must be in same folder)
-df = pd.read_csv("telecommunications_churn(1).csv")
+# ✅ Sample dataset embedded directly
+df = pd.DataFrame([
+    {"total_day_minutes": 100, "customer_service_calls": 1, "international_plan": 0, "voice_mail_plan": 1, "churn": 0},
+    {"total_day_minutes": 250, "customer_service_calls": 5, "international_plan": 1, "voice_mail_plan": 0, "churn": 1},
+    {"total_day_minutes": 180, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1, "churn": 0},
+    {"total_day_minutes": 300, "customer_service_calls": 7, "international_plan": 1, "voice_mail_plan": 0, "churn": 1},
+    {"total_day_minutes": 120, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1, "churn": 0},
+    {"total_day_minutes": 200, "customer_service_calls": 3, "international_plan": 1, "voice_mail_plan": 0, "churn": 1},
+    {"total_day_minutes": 90,  "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1, "churn": 0},
+    {"total_day_minutes": 220, "customer_service_calls": 4, "international_plan": 1, "voice_mail_plan": 0, "churn": 1},
+    {"total_day_minutes": 160, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1, "churn": 0},
+    {"total_day_minutes": 280, "customer_service_calls": 6, "international_plan": 1, "voice_mail_plan": 0, "churn": 1},
+])
 
 # Prepare features and target
-X = df.drop('churn', axis=1).select_dtypes(include=['number'])
+X = df.drop('churn', axis=1)
 y = df['churn']
-y = y.loc[X.index]
 
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
+    X, y, test_size=0.3, random_state=42, stratify=y
 )
 
 # Define models
