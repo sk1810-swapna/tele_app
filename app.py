@@ -64,8 +64,12 @@ for name, model in models.items():
     model_scores[name] = acc
     trained_models[name] = model
 
-# Identify best model
-best_model_name = max(model_scores, key=model_scores.get)
+# ✅ Tie-breaking logic: prefer Random Forest if tied
+sorted_models = sorted(
+    model_scores.items(),
+    key=lambda x: (-x[1], x[0] != "Random Forest")  # Highest accuracy, then prefer RF
+)
+best_model_name = sorted_models[0][0]
 best_model = trained_models[best_model_name]
 
 # Sidebar inputs
