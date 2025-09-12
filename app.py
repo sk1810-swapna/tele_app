@@ -9,48 +9,24 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 
 # Page setup
 st.set_page_config(page_title="Churn Prediction Dashboard", layout="centered")
 st.title("📉 Churn Prediction Dashboard")
 
-# Sidebar inputs
-st.sidebar.header("🔧 Customer Feature Input")
-total_day_minutes = st.sidebar.slider("Total Day Minutes", 0, 350, 180)
-customer_service_calls = st.sidebar.slider("Customer Service Calls", 0, 10, 1)
-international_plan = st.sidebar.selectbox("International Plan", ["No", "Yes"])
-voice_mail_plan = st.sidebar.selectbox("Voice Mail Plan", ["No", "Yes"])
+# Load dataset
+df = pd.read_csv("telecommunications_churn.csv")
 
-# Convert categorical to binary
-intl_plan_bin = 1 if international_plan == "Yes" else 0
-vm_plan_bin = 1 if voice_mail_plan == "Yes" else 0
+# Prepare features and target
+X = df.drop('churn', axis=1).select_dtypes(include=['number'])
+y = df['churn']
+y = y.loc[X.index]
 
-# Create input DataFrame
-input_data = pd.DataFrame([{
-    "total_day_minutes": total_day_minutes,
-    "customer_service_calls": customer_service_calls,
-    "international_plan": intl_plan_bin,
-    "voice_mail_plan": vm_plan_bin
-}])
-
-# Simulated full dataset
-X_full = pd.DataFrame([
-    {"total_day_minutes": 100, "customer_service_calls": 1, "international_plan": 0, "voice_mail_plan": 1},
-    {"total_day_minutes": 250, "customer_service_calls": 5, "international_plan": 1, "voice_mail_plan": 0},
-    {"total_day_minutes": 180, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1},
-    {"total_day_minutes": 300, "customer_service_calls": 7, "international_plan": 1, "voice_mail_plan": 0},
-    {"total_day_minutes": 120, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1},
-    {"total_day_minutes": 200, "customer_service_calls": 3, "international_plan": 1, "voice_mail_plan": 0},
-    {"total_day_minutes": 90, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1},
-    {"total_day_minutes": 220, "customer_service_calls": 4, "international_plan": 1, "voice_mail_plan": 0},
-    {"total_day_minutes": 160, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1},
-    {"total_day_minutes": 280, "customer_service_calls": 6, "international_plan": 1, "voice_mail_plan": 0},
-])
-y_full = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]  # 0 = Stay, 1 = Churn
-
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X_full, y_full, test_size=0.3, random_state=42)
+# Train-test split (same as notebook)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
 
 # Define models
 models = {
@@ -60,67 +36,74 @@ models = {
     "Random Forest": RandomForestClassifier()
 }
 
-# Train all models and store test accuracy
-model_summaries = {}
+# Store accuracy and reports
+accuracy_results = {}
+reports = {}
+
 for name, model in models.items():
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
-    churn_rate = sum(y_pred) / len(y_pred)
-    model_summaries[name] = {
-        "model": model,
-        "accuracy": acc,
-        "churn_rate": churn_rate
-    }
+    accuracy_results[name] = acc
+    reports[name] = classification_report(y_test, y_pred, output_dict=True)
 
-# Identify best model based on test accuracy
-best_model_name = max(model_summaries, key=lambda x: model_summaries[x]["accuracy"])
-best_model = model_summaries[best_model_name]["model"]
-best_accuracy = model_summaries[best_model_name]["accuracy"]
-best_churn_rate = model_summaries[best_model_name]["churn_rate"]
+# Convert results to DataFrame
+results_df = pd.DataFrame.from_dict(accuracy_results, orient='index', columns=['Accuracy'])
+results_df = results_df.sort_values(by='Accuracy', ascending=False)
 
-# Dropdown to select model
-st.subheader("🔽 Choose a Model")
-selected_model_name = st.selectbox("Select Model", list(models.keys()))
-selected_model = model_summaries[selected_model_name]["model"]
-selected_accuracy = model_summaries[selected_model_name]["accuracy"]
-selected_churn_rate = model_summaries[selected_model_name]["churn_rate"]
+# Identify best model
+best_model_name = results_df.idxmax().values[0]
+best_accuracy = results_df.max().values[0]
+best_model = models[best_model_name]
 
-# Predict
-prediction = selected_model.predict(input_data)[0]
+# Sidebar inputs for prediction
+st.sidebar.header("🔧 Customer Feature Input")
+input_data = {}
+for col in X.columns:
+    min_val = int(X[col].min())
+    max_val = int(X[col].max())
+    default_val = int(X[col].mean())
+    input_data[col] = st.sidebar.slider(col, min_val, max_val, default_val)
 
-# Display result
+input_df = pd.DataFrame([input_data])
+
+# Predict using selected model
+selected_model_name = st.selectbox("🔽 Choose a Model", list(models.keys()))
+selected_model = models[selected_model_name]
+selected_model.fit(X_train, y_train)
+prediction = selected_model.predict(input_df)[0]
+selected_accuracy = accuracy_results[selected_model_name]
+selected_report = reports[selected_model_name]
+
+# Display prediction
 st.subheader("📊 Prediction Result")
 if prediction == 1:
     st.error("⚠️ This customer is likely to CHURN.")
 else:
     st.success("✅ This customer is likely to STAY loyal.")
 
-# Visualization
-fig, ax = plt.subplots(figsize=(4, 3))
-sns.barplot(x=["Stay", "Churn"], y=[1 - prediction, prediction], palette="Set2", ax=ax)
-ax.set_title("Churn Prediction Breakdown")
-ax.set_ylabel("Probability (simulated)")
+# Accuracy comparison chart
+st.subheader("📈 Model Accuracy Comparison")
+fig, ax = plt.subplots(figsize=(8, 5))
+sns.barplot(x=results_df.index, y=results_df['Accuracy'], palette='viridis', ax=ax)
+ax.set_ylim(0, 1)
+ax.set_ylabel("Accuracy")
+ax.set_title("Model Accuracy Comparison")
+for bar in ax.patches:
+    acc = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width() / 2, acc + 0.01, f"{acc:.4f}", ha='center', va='bottom', fontsize=9)
 st.pyplot(fig)
 
 # Model summary
 st.subheader("📌 Model Summary")
-
-summary_text = {
-    "SVM": "Support Vector Machine is ideal for binary classification and finds optimal boundaries between churn and loyalty. Best for clean, well-separated data.",
-    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. Simple and effective for small datasets.",
-    "Decision Tree": "Decision Trees split data based on feature thresholds. They're interpretable and good for rule-based churn detection.",
-    "Random Forest": "Random Forest combines multiple decision trees for robust predictions. It handles feature interactions well and is highly accurate even with noisy data."
-}
-
 st.markdown(f"**Model Selected:** `{selected_model_name}`")
-st.markdown(f"**Test Accuracy:** `{selected_accuracy:.2%}`")
-st.markdown(f"**Churn Prediction Rate (Test Set):** `{selected_churn_rate:.2%}`")
-st.markdown(f"**Use Case:** {summary_text[selected_model_name]}")
+st.markdown(f"**Test Accuracy:** `{selected_accuracy:.4f}`")
+st.markdown(f"**Precision (Churn):** `{selected_report['1']['precision']:.2f}`")
+st.markdown(f"**Recall (Churn):** `{selected_report['1']['recall']:.2f}`")
+st.markdown(f"**F1-Score (Churn):** `{selected_report['1']['f1-score']:.2f}`")
 
-# Highlight best model
+# Best model highlight
 st.subheader("🏆 Best Performing Model")
 st.markdown(f"**Best Model Based on Test Accuracy:** `{best_model_name}`")
-st.markdown(f"**Accuracy:** `{best_accuracy:.2%}`")
-st.markdown(f"**Churn Prediction Rate:** `{best_churn_rate:.2%}`")
+st.markdown(f"**Accuracy:** `{best_accuracy:.4f}`")
 st.success(f"{best_model_name} is currently the most accurate model for predicting churn in this setup.")
