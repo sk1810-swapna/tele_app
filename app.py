@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import SVC
@@ -33,8 +34,8 @@ input_data = pd.DataFrame([{
     "voice_mail_plan": vm_plan_bin
 }])
 
-# Simulated training data
-X_train = pd.DataFrame([
+# Simulated full dataset
+X_full = pd.DataFrame([
     {"total_day_minutes": 100, "customer_service_calls": 1, "international_plan": 0, "voice_mail_plan": 1},
     {"total_day_minutes": 250, "customer_service_calls": 5, "international_plan": 1, "voice_mail_plan": 0},
     {"total_day_minutes": 180, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1},
@@ -42,8 +43,14 @@ X_train = pd.DataFrame([
     {"total_day_minutes": 120, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1},
     {"total_day_minutes": 200, "customer_service_calls": 3, "international_plan": 1, "voice_mail_plan": 0},
     {"total_day_minutes": 90, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1},
+    {"total_day_minutes": 220, "customer_service_calls": 4, "international_plan": 1, "voice_mail_plan": 0},
+    {"total_day_minutes": 160, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1},
+    {"total_day_minutes": 280, "customer_service_calls": 6, "international_plan": 1, "voice_mail_plan": 0},
 ])
-y_train = [0, 1, 0, 1, 0, 1, 0]  # 0 = Stay, 1 = Churn
+y_full = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]  # 0 = Stay, 1 = Churn
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X_full, y_full, test_size=0.3, random_state=42)
 
 # Define models
 models = {
@@ -53,12 +60,12 @@ models = {
     "Random Forest": RandomForestClassifier()
 }
 
-# Train all models and store accuracy
+# Train all models and store test accuracy
 model_summaries = {}
 for name, model in models.items():
     model.fit(X_train, y_train)
-    y_pred = model.predict(X_train)
-    acc = accuracy_score(y_train, y_pred)
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
     churn_rate = sum(y_pred) / len(y_pred)
     model_summaries[name] = {
         "model": model,
@@ -107,13 +114,13 @@ summary_text = {
 }
 
 st.markdown(f"**Model Selected:** `{selected_model_name}`")
-st.markdown(f"**Accuracy on Training Data:** `{selected_accuracy:.2%}`")
-st.markdown(f"**Predicted Churn Rate (Training Set):** `{selected_churn_rate:.2%}`")
+st.markdown(f"**Test Accuracy:** `{selected_accuracy:.2%}`")
+st.markdown(f"**Churn Prediction Rate (Test Set):** `{selected_churn_rate:.2%}`")
 st.markdown(f"**Use Case:** {summary_text[selected_model_name]}")
 
 # Highlight best model
 st.subheader("🏆 Best Performing Model")
-st.markdown(f"**Best Model Based on Accuracy:** `{best_model_name}`")
+st.markdown(f"**Best Model Based on Test Accuracy:** `{best_model_name}`")
 st.markdown(f"**Accuracy:** `{best_accuracy:.2%}`")
 st.markdown(f"**Churn Prediction Rate:** `{best_churn_rate:.2%}`")
 st.success(f"{best_model_name} is currently the most accurate model for predicting churn in this setup.")
