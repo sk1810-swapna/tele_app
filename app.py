@@ -12,60 +12,101 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
 # Page setup
-st.set_page_config(page_title="Churn Prediction", layout="centered")
+st.set_page_config(page_title="Churn Prediction Dashboard", layout="centered")
 st.title("📉 Churn Prediction Dashboard")
 
-# Upload dataset
-uploaded_file = st.file_uploader("telecommunications_churn(1).csv", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.success("✅ Dataset loaded!")
+# Load dataset
+@st.cache_data
+def load_data():
+    df = pd.read_csv("telecommunications_churn(1).csv")
+    return df
 
-    # Check for 'churn' column
-    if 'churn' not in df.columns:
-        st.error("Dataset must contain a 'churn' column.")
-    else:
-        # Prepare features and target
-        X = df.drop('churn', axis=1).select_dtypes(include=['number'])
-        y = df['churn']
-        y = y.loc[X.index]
+df = load_data()
 
-        # Train-test split
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
+# Feature selection
+features = ["total_day_minutes", "customer_service_calls", "international_plan", "voice_mail_plan"]
+X = df[features]
+y = df["churn"]
 
-        # Define models
-        model_options = {
-            "SVM": make_pipeline(StandardScaler(), SVC()),
-            "KNN": make_pipeline(StandardScaler(), KNeighborsClassifier()),
-            "Decision Tree": DecisionTreeClassifier(),
-            "Random Forest": RandomForestClassifier()
-        }
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
 
-        # Dropdown to select model
-        st.subheader("🔽 Choose a Model for Churn Prediction")
-        selected_model_name = st.selectbox("Select Model", list(model_options.keys()))
-        selected_model = model_options[selected_model_name]
+# Define models
+models = {
+    "SVM": make_pipeline(StandardScaler(), SVC()),
+    "KNN": make_pipeline(StandardScaler(), KNeighborsClassifier()),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()
+}
 
-        # Train and predict
-        selected_model.fit(X_train, y_train)
-        y_pred = selected_model.predict(X_test)
-        acc = accuracy_score(y_test, y_pred)
+# Train all models and store accuracy
+model_summaries = {}
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    churn_rate = sum(y_pred) / len(y_pred)
+    model_summaries[name] = {
+        "model": model,
+        "accuracy": acc,
+        "churn_rate": churn_rate
+    }
 
-        # Display accuracy
-        st.markdown(f"### ✅ {selected_model_name} Accuracy: `{acc:.4f}`")
+# Sidebar for user input
+st.sidebar.header("🔧 Customer Feature Input")
+total_day_minutes = st.sidebar.slider("Total Day Minutes", 0, 350, 180)
+customer_service_calls = st.sidebar.slider("Customer Service Calls", 0, 10, 1)
+international_plan = st.sidebar.selectbox("International Plan", ["No", "Yes"])
+voice_mail_plan = st.sidebar.selectbox("Voice Mail Plan", ["No", "Yes"])
 
-        # Visualize churn prediction
-        st.subheader("📊 Predicted Churn Distribution")
-        viz_df = pd.DataFrame({
-            "Predicted Churn": y_pred
-        })
+# Convert categorical to binary
+intl_plan_bin = 1 if international_plan == "Yes" else 0
+vm_plan_bin = 1 if voice_mail_plan == "Yes" else 0
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.countplot(x="Predicted Churn", data=viz_df, palette="Set2", ax=ax)
-        ax.set_title(f"Churn Prediction - {selected_model_name}")
-        ax.set_xlabel("Predicted Churn (0 = Stay, 1 = Churn)")
-        ax.set_ylabel("Customer Count")
-        st.pyplot(fig)
+# Create input DataFrame
+input_data = pd.DataFrame([{
+    "total_day_minutes": total_day_minutes,
+    "customer_service_calls": customer_service_calls,
+    "international_plan": intl_plan_bin,
+    "voice_mail_plan": vm_plan_bin
+}])
 
+# Dropdown to select model
+st.subheader("🔽 Choose a Model")
+selected_model_name = st.selectbox("Select Model", list(models.keys()))
+selected_model = model_summaries[selected_model_name]["model"]
+selected_accuracy = model_summaries[selected_model_name]["accuracy"]
+selected_churn_rate = model_summaries[selected_model_name]["churn_rate"]
+
+# Predict
+prediction = selected_model.predict(input_data)[0]
+
+# Display result
+st.subheader("📊 Prediction Result")
+if prediction == 1:
+    st.error("⚠️ This customer is likely to CHURN.")
+else:
+    st.success("✅ This customer is likely to STAY loyal.")
+
+# Visualization
+fig, ax = plt.subplots(figsize=(4, 3))
+sns.barplot(x=["Stay", "Churn"], y=[1 - prediction, prediction], palette="Set2", ax=ax)
+ax.set_title("Churn Prediction Breakdown")
+ax.set_ylabel("Probability (simulated)")
+st.pyplot(fig)
+
+# Algorithm summary
+st.subheader("📌 Model Summary")
+summary_text = {
+    "SVM": "Support Vector Machine is effective for high-dimensional spaces and binary classification. It finds the optimal boundary between churn and loyalty.",
+    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. It's simple and works well with well-separated classes.",
+    "Decision Tree": "Decision Trees split data based on feature thresholds. They're interpretable and good for rule-based churn detection.",
+    "Random Forest": "Random Forest combines multiple decision trees for robust predictions. It's highly accurate and handles feature interactions well."
+}
+
+st.markdown(f"**Model:** {selected_model_name}")
+st.markdown(f"**Accuracy:** `{selected_accuracy:.4f}`")
+st.markdown(f"**Predicted Churn Rate (on test set):** `{selected_churn_rate:.2%}``")
+st.markdown(f"**Summary:** {summary_text[selected_model_name]}")
