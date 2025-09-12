@@ -8,6 +8,7 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 
 # Page setup
 st.set_page_config(page_title="Churn Prediction Dashboard", layout="centered")
@@ -32,16 +33,17 @@ input_data = pd.DataFrame([{
     "voice_mail_plan": vm_plan_bin
 }])
 
-# Simulated training data (for demo purposes)
-# Normally you'd load and train on real data
+# Simulated training data
 X_train = pd.DataFrame([
     {"total_day_minutes": 100, "customer_service_calls": 1, "international_plan": 0, "voice_mail_plan": 1},
     {"total_day_minutes": 250, "customer_service_calls": 5, "international_plan": 1, "voice_mail_plan": 0},
     {"total_day_minutes": 180, "customer_service_calls": 2, "international_plan": 0, "voice_mail_plan": 1},
     {"total_day_minutes": 300, "customer_service_calls": 7, "international_plan": 1, "voice_mail_plan": 0},
     {"total_day_minutes": 120, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1},
+    {"total_day_minutes": 200, "customer_service_calls": 3, "international_plan": 1, "voice_mail_plan": 0},
+    {"total_day_minutes": 90, "customer_service_calls": 0, "international_plan": 0, "voice_mail_plan": 1},
 ])
-y_train = [0, 1, 0, 1, 0]  # 0 = Stay, 1 = Churn
+y_train = [0, 1, 0, 1, 0, 1, 0]  # 0 = Stay, 1 = Churn
 
 # Define models
 models = {
@@ -51,13 +53,27 @@ models = {
     "Random Forest": RandomForestClassifier()
 }
 
+# Train all models and store accuracy
+model_summaries = {}
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_train)
+    acc = accuracy_score(y_train, y_pred)
+    churn_rate = sum(y_pred) / len(y_pred)
+    model_summaries[name] = {
+        "model": model,
+        "accuracy": acc,
+        "churn_rate": churn_rate
+    }
+
 # Dropdown to select model
 st.subheader("🔽 Choose a Model")
 selected_model_name = st.selectbox("Select Model", list(models.keys()))
-selected_model = models[selected_model_name]
+selected_model = model_summaries[selected_model_name]["model"]
+selected_accuracy = model_summaries[selected_model_name]["accuracy"]
+selected_churn_rate = model_summaries[selected_model_name]["churn_rate"]
 
-# Train and predict
-selected_model.fit(X_train, y_train)
+# Predict
 prediction = selected_model.predict(input_data)[0]
 
 # Display result
@@ -76,11 +92,21 @@ st.pyplot(fig)
 
 # Model summary
 st.subheader("📌 Model Summary")
+
 summary_text = {
-    "SVM": "Support Vector Machine is ideal for binary classification and finds optimal boundaries between churn and loyalty.",
-    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. Simple and intuitive.",
-    "Decision Tree": "Decision Trees split data based on feature thresholds. Great for rule-based churn detection.",
-    "Random Forest": "Random Forest combines multiple decision trees for robust predictions. Highly accurate and handles feature interactions well."
+    "SVM": "Support Vector Machine is ideal for binary classification and finds optimal boundaries between churn and loyalty. It's best when data is well-separated and high-dimensional.",
+    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. It's simple and effective for small datasets with clear patterns.",
+    "Decision Tree": "Decision Trees split data based on feature thresholds. They're interpretable and good for rule-based churn detection.",
+    "Random Forest": "Random Forest combines multiple decision trees for robust predictions. It handles feature interactions well and is highly accurate even with noisy data."
 }
-st.markdown(f"**Model:** {selected_model_name}")
-st.markdown(f"**Summary:** {summary_text[selected_model_name]}")
+
+st.markdown(f"**Model Selected:** `{selected_model_name}`")
+st.markdown(f"**Accuracy on Training Data:** `{selected_accuracy:.2%}`")
+st.markdown(f"**Predicted Churn Rate (Training Set):** `{selected_churn_rate:.2%}`")
+st.markdown(f"**Use Case:** {summary_text[selected_model_name]}")
+
+# Highlight best model
+best_model_name = max(model_summaries, key=lambda x: model_summaries[x]["accuracy"])
+best_accuracy = model_summaries[best_model_name]["accuracy"]
+st.info(f"🏆 Based on training accuracy, the best model is **{best_model_name}** with `{best_accuracy:.2%}` accuracy.")
+
