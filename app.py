@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score
 st.set_page_config(page_title="📉 Churn Prediction Dashboard", layout="centered")
 st.title("📉 Churn Prediction Dashboard")
 
-# ✅ Sample dataset (no external file needed)
+# ✅ Sample dataset
 df = pd.DataFrame([
     {"total_day_minutes": 100, "customer_service_calls": 1, "international_plan": 0, "voice_mail_plan": 1, "churn": 0},
     {"total_day_minutes": 250, "customer_service_calls": 5, "international_plan": 1, "voice_mail_plan": 0, "churn": 1},
@@ -46,18 +46,27 @@ models = {
     "Random Forest": RandomForestClassifier()
 }
 
+# Model summaries
+summary_text = {
+    "SVM": "Support Vector Machine finds optimal boundaries between churn and loyalty. Best for clean, well-separated data.",
+    "KNN": "K-Nearest Neighbors predicts churn based on similarity to other customers. Simple and effective for small datasets.",
+    "Decision Tree": "Decision Trees split data based on feature thresholds. They're interpretable and good for rule-based churn detection.",
+    "Random Forest": "Random Forest combines multiple decision trees for robust predictions. It handles feature interactions well and is highly accurate even with noisy data."
+}
+
 # Train and evaluate models
 model_scores = {}
+trained_models = {}
 for name, model in models.items():
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     model_scores[name] = acc
+    trained_models[name] = model
 
 # Identify best model
 best_model_name = max(model_scores, key=model_scores.get)
-best_model = models[best_model_name]
-best_model.fit(X_train, y_train)
+best_model = trained_models[best_model_name]
 
 # Sidebar inputs
 st.sidebar.header("🔧 Customer Feature Input")
@@ -69,8 +78,11 @@ for col in X.columns:
     input_data[col] = st.sidebar.slider(col, min_val, max_val, default_val)
 input_df = pd.DataFrame([input_data])
 
-# Predict using best model
-prediction = best_model.predict(input_df)[0]
+# Dropdown to select model
+st.subheader("🔽 Choose a Model")
+selected_model_name = st.selectbox("Select Model", list(models.keys()), index=list(models.keys()).index(best_model_name))
+selected_model = trained_models[selected_model_name]
+prediction = selected_model.predict(input_df)[0]
 
 # 🎯 Churn Prediction Visualization
 st.subheader("📊 Churn Prediction Result")
@@ -85,9 +97,14 @@ ax.set_title("Churn Prediction Breakdown")
 ax.set_ylabel("Probability (simulated)")
 st.pyplot(fig)
 
+# 📌 Model Summary
+st.subheader("📌 Model Summary")
+st.markdown(f"**Model Selected:** `{selected_model_name}`")
+st.markdown(f"**Test Accuracy:** `{model_scores[selected_model_name]:.4f}`")
+st.markdown(f"**Use Case:** {summary_text[selected_model_name]}")
+
 # 🏆 Best Model Display
 st.subheader("🏆 Best Performing Model")
 st.markdown(f"**Best Model Based on Test Accuracy:** `{best_model_name}`")
 st.markdown(f"**Accuracy:** `{model_scores[best_model_name]:.4f}`")
 st.success(f"{best_model_name} is currently the most accurate model for predicting churn in this setup.")
-
