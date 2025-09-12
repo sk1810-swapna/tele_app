@@ -73,7 +73,7 @@ for name, model in models.items():
         "churn_rate": churn_rate
     }
 
-# Identify best model
+# Identify best model based on test accuracy
 best_model_name = max(model_summaries, key=lambda x: model_summaries[x]["accuracy"])
 best_model = model_summaries[best_model_name]["model"]
 best_accuracy = model_summaries[best_model_name]["accuracy"]
