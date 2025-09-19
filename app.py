@@ -46,17 +46,21 @@ numerical_features = features.columns.difference(categorical_features)
 st.sidebar.header("🔧 Input Customer Features")
 model_choice = st.sidebar.selectbox("Choose Algorithm", ["Logistic Regression", "Decision Tree", "Random Forest"])
 
+# Initialize session state for sliders
+for col in numerical_features:
+    if f"{col}_value" not in st.session_state:
+        st.session_state[f"{col}_value"] = round(float(df[col].mean()), 2)
+
+# Create sliders with session state
 user_input = {}
 for col in numerical_features:
-    min_val = float(df[col].min())
-    max_val = float(df[col].max())
-    default_val = float(df[col].mean())
     user_input[col] = st.sidebar.slider(
         label=col,
-        min_value=round(min_val, 2),
-        max_value=round(max_val, 2),
-        value=round(default_val, 2),
-        step=0.01
+        min_value=round(float(df[col].min()), 2),
+        max_value=round(float(df[col].max()), 2),
+        value=st.session_state[f"{col}_value"],
+        step=0.01,
+        key=f"{col}_value"
     )
 
 user_input['plan_combination'] = st.sidebar.selectbox("Plan Combination", sorted(df['plan_combination'].unique()))
